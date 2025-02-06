@@ -2,24 +2,28 @@ import { Button, VerticalBox, TextEdit } from "std-widgets.slint";
 
 export component AppWindow inherits Window {
     title: "EnAmy TTS";
-    width: 500px;
+    // width: 500px;
     always-on-top: true;
-    background: transparent;
-    height: 150px;
+    // background: transparent;
     no-frame: true;
+    rectHeight: 60px;
     forward-focus: input;
     in-out property <string> textBox;
     in-out property <length> rectWidth;
+    in-out property <length> rectHeight;
     in-out property <length> rectX;
     callback editedText();
     callback closeWindow();
-    Rectangle { 
-            x <=> rectX;
-            y:18px;
-            width <=> rectWidth;
-            height: 54px;
-            background: black;
-        }
+    width <=> rectWidth;
+    background: black;
+    height: rectHeight;
+    // Rectangle { 
+    //         x <=> rectX;
+    //         y:18px;
+    //         width <=> rectWidth;
+    //         height: 54px;
+    //         background: black;
+    //     }
     VerticalBox {
         opacity: 1;
         input := TextInput {
