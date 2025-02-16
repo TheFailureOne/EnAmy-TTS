@@ -3,7 +3,6 @@
 
 use std::fs;
 use std::fs::File;
-use std::fs::DirBuilder;
 use std::io::{BufWriter, Write};
 
 use std::error::Error;
@@ -11,11 +10,17 @@ use std::process::Command;
 use std::io::Read;
 use curl::easy::Easy;
 use curl::easy::List;
+use serde::{Deserialize, Serialize};
 use slint::ToSharedString;
+use regex::Regex;
+use dirs::config_dir;
 
 slint::include_modules!();
 
+
+
 fn main() -> Result<(), Box<dyn Error>> {
+    let site = "http://192.168.122.193:5000/api/HotelBooking/CreateVoice";
     match fs::metadata("/tmp/enamy") {
         Ok(_) => print!("All good, tmp folder exists"),
         Err(_) => fs::create_dir("/tmp/enamy").expect("Failed to create folder"),
@@ -46,21 +51,22 @@ fn main() -> Result<(), Box<dyn Error>> {
             ui.set_rectX(235.0 - (15.0 * ui.get_textBox().len() as f32));
         }
     });
-    let weak = ui.as_weak();
+    //let weak = ui.as_weak();
     ui.on_closeWindow({ 
         let ui_handle = ui.as_weak();
         move || {
             let ui = ui_handle.unwrap();
-            let a = ui.get_textBox().to_string();
+            let c = ui.get_textBox().clone();
+            let a = replace_with_config(c.to_string());
+            
             let text = format!("{{ \"line\": \"{a}\" }}");
-            let site = "http://192.168.122.193:5000/api/HotelBooking/CreateVoice";
             let mut data = text.as_bytes();
             let mut easy = Easy::new();
-            easy.url(site);
+            easy.url(site).expect("Failed to set URL");
             easy.post(true).unwrap();
             easy.post_field_size(data.len() as u64).unwrap();
             let mut header = List::new();
-            header.append("Content-Type: application/json");
+            header.append("Content-Type: application/json").expect("Failed to add header");
             easy.http_headers(header).unwrap();
             let mut file = BufWriter::new(File::create("/tmp/enamy/response.wav").unwrap());
 
@@ -89,4 +95,24 @@ fn main() -> Result<(), Box<dyn Error>> {
     
     ui.run()?;
     Ok(())
+}
+
+fn replace_with_config(mut text: String) -> String {
+    let data = fs::read_to_string(config_dir().unwrap().join("enamy").join("config.json")).expect("Unable to read file");
+    #[derive(Serialize, Deserialize, Debug)]
+    struct Dict {
+        meaning: String,
+        word: String,
+    }
+    #[derive(Serialize, Deserialize, Debug)]
+    struct Config {
+        dictionary: Vec<Dict>,
+    }
+    let deserialized: Config = serde_json::from_str(&data).unwrap();
+    for i in 0..deserialized.dictionary.len() {
+        let regex = format!("\\b({}+)\\b", deserialized.dictionary[i].word);
+        let re = Regex::new(&regex).unwrap();
+        text = re.replace_all(text.as_str(), &deserialized.dictionary[i].meaning).to_string();
+    }
+    return text;
 }
