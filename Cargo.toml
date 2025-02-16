@@ -1,5 +1,5 @@
 [package]
-name = "slint-rust-template"
+name = "enamy-tts"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,6 +7,8 @@ edition = "2021"
 
 [dependencies]
 slint = "1.8.0"
+ruget = "0.5.0"
+curl = "0.4.47"
 
 [build-dependencies]
 slint-build = "1.8.0"
