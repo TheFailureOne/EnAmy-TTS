@@ -17,6 +17,8 @@ use slint::{Global, ToSharedString};
 use regex::Regex;
 use dirs::config_dir;
 use global_hotkey::{GlobalHotKeyManager, hotkey::{HotKey, Modifiers, Code}, GlobalHotKeyEvent};
+use std::sync::atomic::{AtomicBool, Ordering}; 
+use std::sync::{Arc, Mutex};
 
 
 slint::include_modules!();
@@ -24,16 +26,14 @@ slint::include_modules!();
 
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let _lock = BufWriter::new(File::create("/tmp/enamy/lock").unwrap());
-    let _input_active = BufWriter::new(File::create("/tmp/enamy/inputActive").unwrap());
+    let mut lock = Arc::new(Mutex::new(AtomicBool::new(true)));
+    let input_active = Arc::new(Mutex::new(AtomicBool::new(true)));
     let site = "http://192.168.122.193:5000/api/HotelBooking/CreateVoice";
     const STARTING_HORIZONTAL_LIMIT: f32 = 1320.0;
     let manager = GlobalHotKeyManager::new().unwrap();
     let hotkey = HotKey::new(Some(Modifiers::CONTROL), Code::Enter);
-    
-
-    while !fs::metadata("/tmp/enamy/lock").is_err() {
-        if !fs::metadata("/tmp/enamy/inputActive").is_err(){
+    while lock.lock().unwrap().load(Ordering::Relaxed) == true {
+        if input_active.lock().unwrap().load(Ordering::Relaxed) == true {
             match fs::metadata("/tmp/enamy") {
                 Ok(_) => print!("All good, tmp folder exists"),
                 Err(_) => fs::create_dir("/tmp/enamy").expect("Failed to create folder"),
@@ -48,6 +48,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 let ui_handle = ui.as_weak();
                 move || {
                     let ui = ui_handle.unwrap();
+                    
                     horizontal_width = 30.0 + (30.0 * ui.get_textBox().len() as f32);
                     if horizontal_width <= STARTING_HORIZONTAL_LIMIT {
                         ui.set_rectWidth(horizontal_width);
@@ -64,18 +65,15 @@ fn main() -> Result<(), Box<dyn Error>> {
                 }
             });
             //let weak = ui.as_weak();
+
             ui.on_sendRequest({ 
                 let ui_handle = ui.as_weak();
+                let mut lock_lock = lock.clone();
                 move || {
                     let ui = ui_handle.unwrap();
+                    
                     if ui.get_textBox() == "cmd::quit" {
-                        Command::new("rm")
-                        .arg("/tmp/enamy/lock").spawn().unwrap();
-                        println!("lock removed");
-
-                        Command::new("rm")
-                        .arg("/tmp/enamy/inputActive").spawn().unwrap();
-                        println!("inputActive removed");
+                        lock_lock.lock().unwrap().store(false, Ordering::SeqCst);
 
                         ui.window().hide().unwrap();
                     }
@@ -121,19 +119,14 @@ fn main() -> Result<(), Box<dyn Error>> {
 
             ui.on_closeWindow({
                 let ui_handle = ui.as_weak();
+                let mut input_active_lock = input_active.clone();
                 // let test_handle = &test;
                 move || {
                     let ui = ui_handle.unwrap();
                     if ui.get_keyDown().text == "\u{1b}"{
-                        Command::new("rm")
-                        .arg("/tmp/enamy/inputActive").spawn().unwrap();
+                        input_active_lock.lock().unwrap().store(false, Ordering::SeqCst);
 
                         ui.window().hide().unwrap();
-                    }
-                    if ui.get_keyDown().text == "\u{10}" {
-                        Command::new("rm")
-                        .arg("/tmp/enamy/lock").spawn().unwrap();
-                        println!("lock removed");
                     }
                 }
             });
@@ -145,7 +138,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
             if let Ok(event) = GlobalHotKeyEvent::receiver().try_recv(){
                 println!("{:?}", event);
-                BufWriter::new(File::create("/tmp/enamy/inputActive").unwrap());
+                input_active.lock().unwrap().store(true, Ordering::SeqCst);
             }
         }
     }
