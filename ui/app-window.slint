@@ -13,7 +13,9 @@ export component AppWindow inherits Window {
     in-out property <length> rectHeight;
     in-out property <length> rectX;
     callback editedText();
+    callback sendRequest();
     callback closeWindow();
+    in-out property <KeyEvent> keyDown;
     width <=> rectWidth;
     background: black;
     height: rectHeight;
@@ -38,7 +40,8 @@ export component AppWindow inherits Window {
             selection-foreground-color: white;
             text <=> root.textBox;
             edited => {root.editedText()}
-            accepted => {root.closeWindow()}
+            accepted => {root.sendRequest()}
+            key-released(event) => {keyDown = event; closeWindow(); accept}
         }
     }
 }
