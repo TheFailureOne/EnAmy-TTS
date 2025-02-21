@@ -13,6 +13,8 @@ serde = "1.0.217"
 regex = "1.11.1"
 dirs = "6.0.0"
 serde_json = "1.0.138"
+i-slint-backend-selector = "=1.9.2"
+global-hotkey = "0.6.3"
 
 [build-dependencies]
 slint-build = "1.8.0"
