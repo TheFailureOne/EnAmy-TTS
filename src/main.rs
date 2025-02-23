@@ -3,11 +3,16 @@
 
 use std::fs;
 use std::fs::File;
-use std::io::{BufWriter, Write};
+use std::io::{BufWriter, Write, BufReader};
+use std::thread;
+use rodio::{Decoder, OutputStream, Sink};
+use rodio::source::{SineWave, Source};
+
 
 use std::error::Error;
 use std::process::Command;
 use std::io::Read;
+use std::time::Duration;
 // use std::thread::spawn;
 use curl::easy::Easy;
 use curl::easy::List;
@@ -104,9 +109,15 @@ fn main() -> Result<(), Box<dyn Error>> {
                         }).unwrap();
                         transfer.perform().unwrap();
 
-                        Command::new("play")
+                        thread::spawn(||{
+                            Command::new("play")
                             .arg("/tmp/enamy/response.wav")
-                            .spawn().unwrap();
+                            .status().unwrap();
+                            
+                            return 0;
+                        });
+
+                        
 
                         ui.set_textBox("".to_shared_string());
                         ui.invoke_editedText();
