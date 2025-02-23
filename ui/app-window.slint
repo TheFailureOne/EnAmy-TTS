@@ -36,8 +36,8 @@ export component AppWindow inherits Window {
             single-line: true;
             wrap: TextWrap.word-wrap;
             font-size: 50px;
-            selection-background-color: #000000;
-            selection-foreground-color: white;
+            // selection-background-color: #000000;
+            // selection-foreground-color: white;
             text <=> root.textBox;
             edited => {root.editedText()}
             accepted => {root.sendRequest()}

@@ -3,17 +3,19 @@
 
 use std::fs;
 use std::fs::File;
-use std::io::{BufWriter, Write};
+use std::io::{BufWriter, Write, BufReader};
+use std::thread;
+use rodio::{Decoder, OutputStream, Sink};
+
 
 use std::error::Error;
-use std::process::Command;
 use std::io::Read;
 // use std::thread::spawn;
 use curl::easy::Easy;
 use curl::easy::List;
 use serde::{Deserialize, Serialize};
 // use slint::platform::{Key, WindowEvent};
-use slint::{Global, ToSharedString};
+use slint::ToSharedString;
 use regex::Regex;
 use dirs::config_dir;
 use global_hotkey::{GlobalHotKeyManager, hotkey::{HotKey, Modifiers, Code}, GlobalHotKeyEvent};
@@ -26,7 +28,7 @@ slint::include_modules!();
 
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let mut lock = Arc::new(Mutex::new(AtomicBool::new(true)));
+    let lock = Arc::new(Mutex::new(AtomicBool::new(true)));
     let input_active = Arc::new(Mutex::new(AtomicBool::new(true)));
     let site = "http://192.168.122.193:5000/api/HotelBooking/CreateVoice";
     const STARTING_HORIZONTAL_LIMIT: f32 = 1320.0;
@@ -68,7 +70,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
             ui.on_sendRequest({ 
                 let ui_handle = ui.as_weak();
-                let mut lock_lock = lock.clone();
+                let lock_lock = lock.clone();
                 move || {
                     let ui = ui_handle.unwrap();
                     
@@ -104,9 +106,21 @@ fn main() -> Result<(), Box<dyn Error>> {
                         }).unwrap();
                         transfer.perform().unwrap();
 
-                        Command::new("play")
-                            .arg("/tmp/enamy/response.wav")
-                            .spawn().unwrap();
+                        thread::spawn(||{
+                            let (_stream, stream_handle) = OutputStream::try_default().unwrap();
+                            let sink = Sink::try_new(&stream_handle).unwrap();
+                            let file = BufReader::new(File::open("/tmp/enamy/response.wav").unwrap());
+                            let source = Decoder::new(file).unwrap();
+
+                            sink.append(source);
+
+                            sink.sleep_until_end();
+
+                            
+                            return 0;
+                        });
+
+                        
 
                         ui.set_textBox("".to_shared_string());
                         ui.invoke_editedText();
@@ -119,7 +133,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
             ui.on_closeWindow({
                 let ui_handle = ui.as_weak();
-                let mut input_active_lock = input_active.clone();
+                let input_active_lock = input_active.clone();
                 // let test_handle = &test;
                 move || {
                     let ui = ui_handle.unwrap();
@@ -134,7 +148,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             ui.run()?;
         }
         else{
-            manager.register(hotkey);
+            let _ = manager.register(hotkey);
 
             if let Ok(event) = GlobalHotKeyEvent::receiver().try_recv(){
                 println!("{:?}", event);
