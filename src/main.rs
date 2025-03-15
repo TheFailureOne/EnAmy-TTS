@@ -21,6 +21,7 @@ use dirs::config_dir;
 use global_hotkey::{GlobalHotKeyManager, hotkey::{HotKey, Modifiers, Code}, GlobalHotKeyEvent};
 use std::sync::atomic::{AtomicBool, Ordering}; 
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 
 slint::include_modules!();
@@ -30,6 +31,7 @@ slint::include_modules!();
 fn main() -> Result<(), Box<dyn Error>> {
     let lock = Arc::new(Mutex::new(AtomicBool::new(true)));
     let input_active = Arc::new(Mutex::new(AtomicBool::new(true)));
+    let mut delay: i32 = 0;
     let site = "http://192.168.122.193:5000/api/HotelBooking/CreateVoice";
     const STARTING_HORIZONTAL_LIMIT: f32 = 1320.0;
     let manager = GlobalHotKeyManager::new().unwrap();
@@ -79,6 +81,13 @@ fn main() -> Result<(), Box<dyn Error>> {
 
                         ui.window().hide().unwrap();
                     }
+                    else if ui.get_textBox().contains("cmd::delay") {
+                        let re = Regex::new(r"\d+").unwrap();
+                        delay = re.find_iter(ui.get_textBox().as_str())
+                            .map(|m| m.as_str().parse::<i32>().unwrap())
+                            .next()
+                            .unwrap_or(0);
+                    }
                     else {
                         let c = ui.get_textBox().clone();
                         let a = replace_with_config(c.to_string());
@@ -106,7 +115,10 @@ fn main() -> Result<(), Box<dyn Error>> {
                         }).unwrap();
                         transfer.perform().unwrap();
 
-                        thread::spawn(||{
+                        thread::spawn({
+                            let _delay = delay.clone();
+                            move ||{
+                            thread::sleep(std::time::Duration::from_secs_f32(_delay as f32));
                             let (_stream, stream_handle) = OutputStream::try_default().unwrap();
                             let sink = Sink::try_new(&stream_handle).unwrap();
                             let file = BufReader::new(File::open("/tmp/enamy/response.wav").unwrap());
@@ -118,13 +130,11 @@ fn main() -> Result<(), Box<dyn Error>> {
 
                             
                             return 0;
-                        });
-
-                        
-
-                        ui.set_textBox("".to_shared_string());
-                        ui.invoke_editedText();
+                        }});
                     }
+                    
+                    ui.set_textBox("".to_shared_string());
+                        ui.invoke_editedText();
 
                     //weak.unwrap().window().hide().unwrap();
 
