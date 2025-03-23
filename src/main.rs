@@ -30,6 +30,10 @@ slint::include_modules!();
 
 
 fn main() -> Result<(), Box<dyn Error>> {
+    match fs::metadata("/tmp/enamy") {
+        Ok(_) => print!("All good, tmp folder exists"),
+        Err(_) => fs::create_dir("/tmp/enamy").expect("Failed to create folder"),
+    }
     let lock = Arc::new(Mutex::new(AtomicBool::new(true)));
     if(!fs::metadata("/tmp/enamy/lock").is_err()){
         Command::new("kdialog").arg("--error").arg("EnAmy is already running").arg("--title").arg("EAEH").status().unwrap();
@@ -44,10 +48,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     let hotkey = HotKey::new(Some(Modifiers::CONTROL), Code::Enter);
     while lock.lock().unwrap().load(Ordering::Relaxed) == true {
         if input_active.lock().unwrap().load(Ordering::Relaxed) == true {
-            match fs::metadata("/tmp/enamy") {
-                Ok(_) => print!("All good, tmp folder exists"),
-                Err(_) => fs::create_dir("/tmp/enamy").expect("Failed to create folder"),
-            }
             let ui = AppWindow::new()?;
             let mut horizontal_limit = STARTING_HORIZONTAL_LIMIT;
             let mut horizontal_width = ui.get_rectWidth();
