@@ -10,6 +10,7 @@ use rodio::{Decoder, OutputStream, Sink};
 
 use std::error::Error;
 use std::io::Read;
+use std::process::Command;
 // use std::thread::spawn;
 use curl::easy::Easy;
 use curl::easy::List;
@@ -30,6 +31,11 @@ slint::include_modules!();
 
 fn main() -> Result<(), Box<dyn Error>> {
     let lock = Arc::new(Mutex::new(AtomicBool::new(true)));
+    if(!fs::metadata("/tmp/enamy/lock").is_err()){
+        Command::new("kdialog").arg("--error").arg("EnAmy is already running").arg("--title").arg("EAEH").status().unwrap();
+        std::process::exit(69420);
+    }
+    let mut _soft_lock = BufWriter::new(File::create("/tmp/enamy/lock").unwrap());
     let input_active = Arc::new(Mutex::new(AtomicBool::new(true)));
     let mut delay: i32 = 0;
     let site = "http://192.168.122.193:5000/api/HotelBooking/CreateVoice";
@@ -166,6 +172,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             }
         }
     }
+    Command::new("rm").arg("/tmp/enamy/lock").status().unwrap();
     Ok(())
 }
 
